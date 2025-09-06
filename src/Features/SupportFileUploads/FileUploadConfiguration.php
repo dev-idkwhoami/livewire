@@ -129,7 +129,7 @@ class FileUploadConfiguration
     {
         $filename = TemporaryUploadedFile::generateHashName($file);
         $metaFilename = $filename . '.json';
-        
+
         Storage::disk($disk)->put('/'.static::path($metaFilename), json_encode([
             'name' => $file->getClientOriginalName(),
             'type' => $file->getMimeType(),
@@ -140,5 +140,57 @@ class FileUploadConfiguration
         return $file->storeAs('/'.static::path(), $filename, [
             'disk' => $disk
         ]);
+    }
+
+    public static function isChunkedUploadsEnabled()
+    {
+        return config('livewire.chunked_uploads.enabled', false);
+    }
+
+    public static function minChunks()
+    {
+        return config('livewire.chunked_uploads.min_chunks', 2);
+    }
+
+    public static function maxChunkSizeKB()
+    {
+        return config('livewire.chunked_uploads.max_chunk_size_kb', 65536); // 64MB default
+    }
+
+    public static function chunkedSessionTimeout()
+    {
+        return config('livewire.chunked_uploads.session_timeout', 3600); // 1 hour
+    }
+
+    public static function maxConcurrentChunks()
+    {
+        return config('livewire.chunked_uploads.max_concurrent_chunks', 3);
+    }
+
+    public static function chunkRetryAttempts()
+    {
+        return config('livewire.chunked_uploads.retry_attempts', 3);
+    }
+
+    public static function chunkedUploadRules()
+    {
+        $rules = config('livewire.chunked_uploads.rules') ?? ['required', 'file', 'max:1048576'];
+
+        return is_array($rules) ? $rules : explode('|', $rules);
+    }
+
+    public static function chunkedUploadMaxSizeMB()
+    {
+        $rules = static::chunkedUploadRules();
+
+        foreach ($rules as $rule) {
+            if (is_string($rule) && str_starts_with($rule, 'max:')) {
+                return (int) substr($rule, 4) / 1024; // Convert KB to MB
+            } elseif (is_array($rule) && isset($rule['max'])) {
+                return (int) $rule['max'] / 1024; // Convert KB to MB
+            }
+        }
+
+        return 1024; // Default 1GB in MB
     }
 }

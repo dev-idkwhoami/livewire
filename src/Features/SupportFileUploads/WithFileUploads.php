@@ -12,6 +12,35 @@ trait WithFileUploads
     #[Renderless]
     function _startUpload($name, $fileInfo, $isMultiple)
     {
+        // Check for chunked uploads first
+        if (FileUploadConfiguration::isChunkedUploadsEnabled()) {
+            $uploadStrategies = ChunkedUploadManager::processFileInfos($fileInfo, $isMultiple);
+
+            $hasChunkedFiles = collect($uploadStrategies)->contains('strategy', 'chunked');
+
+            if ($hasChunkedFiles) {
+                // Create new upload sessions for chunked files
+                foreach ($uploadStrategies as &$strategy) {
+                    if ($strategy['strategy'] === 'chunked') {
+                        ChunkedUploadManager::createChunkSession(
+                            $strategy['uploadId'],
+                            [
+                                'name' => $strategy['name'],
+                                'size' => $strategy['fileSize'],
+                                'type' => $fileInfo[$strategy['index']]['type'] ?? 'application/octet-stream'
+                            ],
+                            $strategy['chunkSize'],
+                            $strategy['totalChunks']
+                        );
+                    }
+                }
+
+                $this->dispatch('upload:chunkedStrategy', name: $name, strategies: $uploadStrategies, chunkUrl: GenerateSignedUploadUrl::forChunked())->self();
+                return;
+            }
+        }
+
+        // Original upload logic for non-chunked uploads
         if (FileUploadConfiguration::isUsingS3()) {
             throw_if($isMultiple, S3DoesntSupportMultipleFileUploads::class);
 
@@ -99,6 +128,36 @@ trait WithFileUploads
         }
     }
 
+    #[Renderless]
+    function _finishChunkedUpload($name, $uploadIds, $isMultiple)
+    {
+        // Always treat as array for consistency
+        if (!is_array($uploadIds)) {
+            $uploadIds = [$uploadIds];
+        }
+
+        $tmpPaths = [];
+
+        // Collect all completed file paths
+        foreach ($uploadIds as $uploadId) {
+            $session = ChunkSession::load($uploadId);
+
+            if (! $session || ! $session->getFinalPath()) {
+                $this->dispatch('upload:errored', name: $name)->self();
+                return;
+            }
+
+            $tmpPath = str_replace(FileUploadConfiguration::path(DIRECTORY_SEPARATOR), '', $session->getFinalPath());
+            $tmpPaths[] = $tmpPath;
+
+            // Clean up the session
+            $session->delete();
+        }
+
+        // Use the same completion logic as regular uploads
+        $this->_finishUpload($name, $tmpPaths, $isMultiple);
+    }
+
     protected function cleanupOldUploads()
     {
         if (FileUploadConfiguration::isUsingS3()) return;
@@ -117,4 +176,3 @@ trait WithFileUploads
         }
     }
 }
-

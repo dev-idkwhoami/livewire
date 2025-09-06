@@ -1,4 +1,5 @@
 import { getCsrfToken } from '@/utils';
+import { ChunkedUploadManager } from './chunkedUploadManager.js';
 
 let uploadManagers = new WeakMap
 
@@ -100,6 +101,11 @@ class UploadManager {
             this.handleS3PreSignedUrl(name, payload)
         })
 
+        this.component.$wire.$on('upload:chunkedStrategy', ({ name, strategies, chunkUrl }) => {
+            setUploadLoading(this.component, name)
+            this.handleChunkedStrategy(name, strategies, chunkUrl)
+        })
+
         this.component.$wire.$on('upload:finished', ({ name, tmpFilenames }) => this.markUploadFinished(name, tmpFilenames))
         this.component.$wire.$on('upload:errored', ({ name }) => this.markUploadErrored(name))
         this.component.$wire.$on('upload:removed', ({ name, tmpFilename }) => this.removeBag.shift(name).finishCallback(tmpFilename))
@@ -170,6 +176,25 @@ class UploadManager {
         this.makeRequest(name, formData, 'put', url, headers, response => {
             return [payload.path]
         })
+    }
+
+    async handleChunkedStrategy(name, strategies, chunkUrl) {
+        const uploadObject = this.uploadBag.first(name)
+        
+        try {
+            const chunkedManager = new ChunkedUploadManager(this.component, strategies, name, chunkUrl)
+            
+            await chunkedManager.startUploads(
+                uploadObject.files,
+                uploadObject.finishCallback,
+                uploadObject.errorCallback,
+                uploadObject.progressCallback,
+                uploadObject.cancelledCallback
+            )
+        } catch (error) {
+            console.error('Chunked upload failed:', error)
+            uploadObject.errorCallback()
+        }
     }
 
     makeRequest(name, formData, method, url, headers, retrievePaths) {

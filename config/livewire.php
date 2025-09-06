@@ -79,6 +79,38 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Chunked File Uploads
+    |---------------------------------------------------------------------------
+    |
+    | For large file uploads, Livewire can automatically use chunked uploads
+    | which split files into smaller pieces for improved reliability and
+    | resumability. Configure chunked upload behavior below:
+    |
+    */
+
+    'chunked_uploads' => [
+        'enabled' => false,        // Enable chunked uploads for large files
+        'min_chunks' => 2,         // Minimum number of chunks required to enable chunking
+        'max_chunk_size_kb' => 65536, // Maximum chunk size in KB (64MB default)
+        'session_timeout' => 3600, // Chunk session timeout in seconds (1 hour)
+        'max_concurrent_chunks' => 3, // Maximum number of chunks to upload concurrently
+        'retry_attempts' => 3,     // Number of retry attempts for failed chunks
+        
+        /*
+        | Chunked Upload Validation Rules
+        |
+        | These validation rules are applied specifically to chunked uploads.
+        | They are separate from the regular file upload rules to allow for
+        | larger files that require chunking. Set higher size limits here
+        | than in the regular temporary_file_upload rules.
+        |
+        | Example: 'rules' => ['required', 'file', 'max:1048576'], // 1GB limit
+        */
+        'rules' => null, // Default: ['required', 'file', 'max:1048576'] (1GB)
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
     | Render On Redirect
     |---------------------------------------------------------------------------
     |

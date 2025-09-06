@@ -70,4 +70,11 @@ class GenerateSignedUploadUrl
             ]
         );
     }
+
+    public function forChunked()
+    {
+        return URL::temporarySignedRoute(
+            'livewire.upload-chunk', now()->addMinutes(FileUploadConfiguration::maxUploadTime())
+        );
+    }
 }
