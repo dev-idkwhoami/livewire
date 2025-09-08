@@ -16,6 +16,38 @@
 
 Livewire is a full-stack framework for Laravel that allows you to build dynamic UI components without leaving PHP.
 
+## Try it yourself
+
+If you wanna test out the changes this is how you do it:
+
+```bash
+git clone -b native-upload-chunking https://github.com/dev-idkwhoami/livewire.git
+```
+
+In the cloned repository root you run:
+
+```bash
+npm run build
+```
+
+In a project of your choosing add the following into your `repositories` section:
+
+```json
+        "livewire/livewire": {
+            "type": "path",
+            "url": "path\\to\\cloned\\livewire",
+            "options": {
+                "symlink": true
+            }
+        }
+```
+
+Then run a quick update to "link" the repository:
+```bash
+composer update
+```
+
+
 ## Official Documentation
 
 You can read the official documentation on the [Livewire website](https://livewire.laravel.com/docs).
