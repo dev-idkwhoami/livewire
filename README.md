@@ -27,6 +27,7 @@ git clone -b native-upload-chunking https://github.com/dev-idkwhoami/livewire.gi
 In the cloned repository root you run:
 
 ```bash
+npm install
 npm run build
 ```
 
